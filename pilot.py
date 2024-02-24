@@ -11,6 +11,7 @@ from selenium.webdriver.chrome.options import Options
 from datetime import datetime
 from dotenv import load_dotenv
 import os
+import PyPDF2
 import requests
 from selenium.webdriver.support.ui import Select
 import time
@@ -180,7 +181,45 @@ def parse_response(response):
 #     # Returning the JSON string
 #     return cover_letter_json
 
-def generate_cover_letter(your_name, your_address, your_city_state_zip, your_email, your_phone_number, job_title, job_description, job_id, job_designation, attempt=1,custom_prompt=""):
+def extract_text_from_pdf(pdf_file_path, output_file_path="parsed_resume.txt"):
+    if(os.path.exists(output_file_path)):
+        print(f"The parsed resume already exist at the file path {output_file_path}")
+        return
+    with open(pdf_file_path, 'rb') as file:
+        pdf_reader = PyPDF2.PdfReader(file)
+        text = ''
+
+        for page_num in range(len(pdf_reader.pages)):
+            page = pdf_reader.pages[page_num]
+            text += page.extract_text() + ' '
+
+    # Remove new lines and replace them with spaces
+    single_line_text = text.replace('\n', ' ')
+
+    # Write the modified text to a file
+    with open(output_file_path, 'w') as output_file:
+        output_file.write(single_line_text)
+
+    print(f"Extracted text written to {output_file_path}")
+
+def read_resume_text(file_path):
+    with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
+        return file.read()
+
+    # Define the path to the 'resumes' folder and the 'parsed_resume.txt' file
+    resume_folder = os.path.join(os.getcwd(), "resumes")
+    parsed_resume_path = os.path.join(resume_folder, "parsed_resume.txt")
+
+    # Read the content of 'parsed_resume.txt'
+    if os.path.exists(parsed_resume_path):
+        resume_text = read_resume_text(parsed_resume_path)
+        return resume_text
+    else:
+        print(f"Resume text file not found at {parsed_resume_path}. Please make sure the file exists.")
+        exit(1)
+
+
+def generate_cover_letter(your_name, your_address, your_city_state_zip, your_email, your_phone_number, job_title, job_description, job_id, job_designation, attempt=1,custom_prompt="",resume=""):
 
     cover_letter_folder = os.path.join(os.getcwd(), "cover_letters")  # 'cover letters' is the folder name in your working directory
 
@@ -215,7 +254,7 @@ def generate_cover_letter(your_name, your_address, your_city_state_zip, your_ema
     Job Designation: {job_designation}
     Job Description: {job_description}
 
-    Please make sure no edits are required like brackets shoudlnt exist. this should be the final cover letter and do not include company name or address, just keep it arizona state university. also {custom_prompt}. Rerun the cover letter again to see to make sure no edits are required. this is very important
+    Please make sure no edits are required like brackets shoudlnt exist. this should be the final cover letter and do not include company name or address, just keep it arizona state university. also {custom_prompt}. Rerun the cover letter again to see to make sure no edits are required. this is very important. Tailor the cover letter to my resume that is {resume}
     """
 
     try:
@@ -239,7 +278,7 @@ def generate_cover_letter(your_name, your_address, your_city_state_zip, your_ema
             delay = 2 ** attempt  # Exponential backoff
             print(f"Rate limit exceeded, retrying after {delay} seconds...")
             time.sleep(delay)
-            return generate_cover_letter(your_name, your_address, your_city_state_zip, your_email, your_phone_number, job_title, job_description, job_id, job_designation, attempt + 1)
+            return generate_cover_letter(your_name, your_address, your_city_state_zip, your_email, your_phone_number, job_title, job_description, job_id, job_designation, attempt + 1,resume)
         else:
             print("Max retry attempts reached. Failed to generate cover letter.")
             return None
@@ -276,9 +315,14 @@ def generate_document_from_prompt(prompt, document_id, folder_name='cover_letter
 
 
 
-
-
-jobs = get_input_from_user(num_jobs=1)
+num_of_jobs = int(input("How many jobs do you want to apply today: Max is 10 now :(\n"))
+while(num_of_jobs<1):
+    if(num_of_jobs<0):
+        print("BRUH FR?!!!. No way you entered a negative number :insert skull emoji:")
+    elif(num_of_jobs==0):
+        print("Guess who is not getting employed anytime soon lmao")
+    exit(-1)
+jobs = get_input_from_user(num_jobs)
 
 
 
@@ -368,18 +412,18 @@ for job_link, custom_prompt in jobs:
         
     )
 
-    # # Iterate through all matching <p> elements to find and print text from <li> elements
-    # for duties_element in duties_elements:
-    #     # Find all <ul> elements within the current <p> element
-    #     ul_elements = duties_element.find_elements(By.TAG_NAME, "ul")
 
-    #     # Iterate over each <ul> element to find and extract text from its <li> children
-    #     for ul in ul_elements:
-    #         li_elements = ul.find_elements(By.TAG_NAME, "li")
-    #         for li in li_elements:
-    #             print(li.text)
-
-    generate_cover_letter(attempt=1, your_name=YOUR_NAME,your_address=YOUR_ADDRESS,your_city_state_zip=YOUR_CITY_STATE_ZIP,your_email=YOUR_EMAIL,your_phone_number=YOUR_PHONE_NUMBER,job_title=extracted_json['job_title'],job_id=extracted_json['job_id'],job_designation=extracted_json['job_designation'],job_description=extracted_json["job_description"],custom_prompt=custom_prompt)
+    resume_folder = os.path.join(os.getcwd(),"resumes")
+    RESUME_FILE_NAME = os.getenv("RESUME_FILE_NAME")
+    resume_file_path = os.path.join(resume_folder,RESUME_FILE_NAME)
+    if(os.path.exists(resume_file_path)):
+        resume_text = read_resume_text(os.path.join(resume_folder,"parsed_resume.txt"))
+    else:
+        print(f"Dear Human, you had made one good decision in life by downloading this script, but you messed up in putting the resume into the right path or you messed up the env file")
+        print(f"Its alright i give you another chance to fix your mistakes. lessgoo i believe in you. You got this!!")
+        exit(5)
+    
+    generate_cover_letter(attempt=1, your_name=YOUR_NAME,your_address=YOUR_ADDRESS,your_city_state_zip=YOUR_CITY_STATE_ZIP,your_email=YOUR_EMAIL,your_phone_number=YOUR_PHONE_NUMBER,job_title=extracted_json['job_title'],job_id=extracted_json['job_id'],job_designation=extracted_json['job_designation'],job_description=extracted_json["job_description"],custom_prompt=custom_prompt,resume=resume_text)
     time.sleep(2)
 
 
@@ -422,25 +466,6 @@ for job_link, custom_prompt in jobs:
     authorized = driver.find_element(By.CSS_SELECTOR,'#radio-44674-Yes')
     authorized.click()
 
-    # wait.until(EC.visibility_of_element_located((By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[2]/div/div/div/div/div/div[7]/select')))
-    # dropdown_element = driver.find_element(By.XPATH, "/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[2]/div/div/div/div/div/div[7]/select")
-
-    # dropdown_element.click()
-
-
-
-
-
-    # if ARE_YOU_BEING_REFERRED.lower() == 'yes':
-    #     referral_option = wait.until(EC.visibility_of_element_located((By.XPATH, '/html/body/div[2]/div[2]/div[1]/div[7]/div[5]/div[1]/ul/li[6]/div')))
-    #     referral_option.click()
-
-    #     referrer_name = wait.until(EC.visibility_of_element_located((By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[2]/div/div/div/div/div/div[10]/div/input')))
-    #     referrer_name.send_keys(REFERRED_BY)
-    # else:
-    #     website_option = wait.until(EC.visibility_of_element_located((By.XPATH, '/html/body/div[2]/div[2]/div[1]/div[7]/div[5]/div[1]/ul/li[4]/div')))
-    #     website_option.click()
-
     dropdown_menu_locator = wait.until(EC.visibility_of_element_located((By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[2]/div/div/div/div/div/div[7]/span[2]/span[2]')))
     dropdown_menu = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[2]/div/div/div/div/div/div[7]/span[2]/span[2]')
     dropdown_menu.click()
@@ -481,9 +506,7 @@ for job_link, custom_prompt in jobs:
     
 
     # ADD RESUME HERE
-    resume_folder = os.path.join(os.getcwd(),"resumes")
-    RESUME_FILE_NAME = os.getenv("RESUME_FILE_NAME")
-    resume_file_path = os.path.join(resume_folder,RESUME_FILE_NAME)
+
     if os.path.exists(resume_file_path):
         upload_resume_button.send_keys(resume_file_path)
         driver.switch_to.default_content()
@@ -525,10 +548,11 @@ for job_link, custom_prompt in jobs:
             verify_cover_letter = input("type yes only if you are done making final changes to your cover letter. Please dont make any changes to the file name")
             while(verify_cover_letter.lower()!='yes'):
                 print("Sir/Ma'am wtf are you doing?")
-                verify_cover_letter = input("type yes only if you are done making final changes to your cover letter. Please dont make any changes to the file name")
+                verify_cover_letter = input("Its alright i believe in you, you know the spelling of yes for sure. or you can copy yes from this line and put it")
             upload_cover_letter.send_keys(cover_letter_file_path)
         else:
-            print("Dear Human, Please read the documentation for atleast once in your lifetime. yolo mode error here. type either yes or no")
+            print("Dear Human, Please read the documentation for atleast once in your lifetime. Please dont skip it like you do with terms and conditions.")
+            print("Either ")
             exit(2)
     else:
         print("The cover letter wasn't generated successfully")
@@ -577,34 +601,3 @@ for job_link, custom_prompt in jobs:
     submit_btn_element = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')
 
     # submit_btn_element.click()
-
-
-
-
-
-    
-
-
-
-
-
-    
-
-
-
-            
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
