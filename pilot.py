@@ -486,6 +486,7 @@ for job_link, custom_prompt in jobs:
     resume_file_path = os.path.join(resume_folder,RESUME_FILE_NAME)
     if os.path.exists(resume_file_path):
         upload_resume_button.send_keys(resume_file_path)
+        driver.switch_to.default_content()
     else:
         print(f"You are actually fricking trolling bro!. Put the resume into {resume_folder} path and set the env variable properly")
         exit(1)
@@ -496,7 +497,7 @@ for job_link, custom_prompt in jobs:
         add_cover_letter
     ))
 
-    add_cover_letter_element = driver.find_element(by=By.ID,value='AddResumeLink')
+    add_cover_letter_element = driver.find_element(by=By.ID,value='AddCLLink')
     add_cover_letter_element.click()
 
     cl_iframe = wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[3]/div[2]")))
@@ -517,23 +518,67 @@ for job_link, custom_prompt in jobs:
     print(cover_letter_file_path)
 
     if os.path.exists(cover_letter_file_path):
-        if(YOLO_MODE.lower() == 'no'):
+        if(YOLO_MODE.lower() == 'yes'):
             upload_cover_letter.send_keys(cover_letter_file_path)
-        elif(YOLO_MODE.lower()=='yes'):
-            verify_cover_letter = input("type yes only if you are done making final changes to your cover letter. Please dont make any changes to the file name")
+        elif(YOLO_MODE.lower()=='no'):
             print(f"The file path of the cover letter you need to verify is: {cover_letter_file_path}")
-            if(verify_cover_letter.lower=='yes'):
-                upload_cover_letter.send_keys(cover_letter_file_path)
-            else:
+            verify_cover_letter = input("type yes only if you are done making final changes to your cover letter. Please dont make any changes to the file name")
+            while(verify_cover_letter.lower()!='yes'):
                 print("Sir/Ma'am wtf are you doing?")
+                verify_cover_letter = input("type yes only if you are done making final changes to your cover letter. Please dont make any changes to the file name")
+            upload_cover_letter.send_keys(cover_letter_file_path)
         else:
-            print("Git gud bro :) yolo mode error here. type either yes or no")
+            print("Dear Human, Please read the documentation for atleast once in your lifetime. yolo mode error here. type either yes or no")
             exit(2)
     else:
         print("The cover letter wasn't generated successfully")
         print("Cover letter file does not exist:", cover_letter_file_path)
         exit(3)
+
+
+    driver.switch_to.default_content()
+
+    save_and_continue_resume_locator = wait.until(EC.element_to_be_clickable((By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')))
     
+
+    save_and_continue_button = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')
+    save_and_continue_button.click()
+
+    time.sleep(5)
+    save_and_continue_after_resume = wait.until(EC.element_to_be_clickable((By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')))
+    save_and_continue_after_resume_element = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button') 
+
+    save_and_continue_after_resume_element.click()
+
+    time.sleep(5)
+
+    references_save_locator = wait.until(EC.element_to_be_clickable((By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')))
+
+    references_save_element = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')
+    references_save_element.click()   
+
+    time.sleep(5)
+
+    gender_save_locator = wait.until(EC.element_to_be_clickable((By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')))
+    gender_save_element = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')
+    gender_save_element.click()
+
+    time.sleep(5)
+
+    ethnicity_save_locator = wait.until(EC.element_to_be_clickable((By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')))
+
+    ethnicity_save_element = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')
+    ethnicity_save_element.click()
+
+    time.sleep(5)
+
+
+    submit_locator = wait.until(EC.element_to_be_clickable((By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')))
+    submit_btn_element = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')
+
+    # submit_btn_element.click()
+
+
 
 
 
