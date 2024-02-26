@@ -11,9 +11,8 @@ from selenium.webdriver.chrome.options import Options
 from datetime import datetime
 from dotenv import load_dotenv
 import os
-import PyPDF2
 import requests
-from selenium.webdriver.support.ui import Select
+
 import time
 from docx import Document
 
@@ -181,26 +180,26 @@ def parse_response(response):
 #     # Returning the JSON string
 #     return cover_letter_json
 
-def extract_text_from_pdf(pdf_file_path, output_file_path="parsed_resume.txt"):
-    if(os.path.exists(output_file_path)):
-        print(f"The parsed resume already exist at the file path {output_file_path}")
-        return
-    with open(pdf_file_path, 'rb') as file:
-        pdf_reader = PyPDF2.PdfReader(file)
-        text = ''
+# def extract_text_from_pdf(pdf_file_path, output_file_path="parsed_resume.txt"):
+#     if(os.path.exists(output_file_path)):
+#         print(f"The parsed resume already exist at the file path {output_file_path}")
+#         return
+#     with open(pdf_file_path, 'rb') as file:
+#         pdf_reader = PyPDF2.PdfReader(file)
+#         text = ''
 
-        for page_num in range(len(pdf_reader.pages)):
-            page = pdf_reader.pages[page_num]
-            text += page.extract_text() + ' '
+#         for page_num in range(len(pdf_reader.pages)):
+#             page = pdf_reader.pages[page_num]
+#             text += page.extract_text() + ' '
 
-    # Remove new lines and replace them with spaces
-    single_line_text = text.replace('\n', ' ')
+#     # Remove new lines and replace them with spaces
+#     single_line_text = text.replace('\n', ' ')
 
-    # Write the modified text to a file
-    with open(output_file_path, 'w') as output_file:
-        output_file.write(single_line_text)
+#     # Write the modified text to a file
+#     with open(output_file_path, 'w') as output_file:
+#         output_file.write(single_line_text)
 
-    print(f"Extracted text written to {output_file_path}")
+#     print(f"Extracted text written to {output_file_path}")
 
 def read_resume_text(file_path):
     with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
@@ -254,7 +253,7 @@ def generate_cover_letter(your_name, your_address, your_city_state_zip, your_ema
     Job Designation: {job_designation}
     Job Description: {job_description}
 
-    Please make sure no edits are required like brackets shoudlnt exist. this should be the final cover letter and do not include company name or address, just keep it arizona state university. also {custom_prompt}. Rerun the cover letter again to see to make sure no edits are required. this is very important. Tailor the cover letter to my resume that is {resume}
+    Please make sure no edits are required like brackets shouldn't exist and no extra text other than content of the cover letter. this should be the final cover letter and try to find the department name i am applying to based on the job description and keep it arizona state university,tempe,arizona,85281. Also try to include {custom_prompt}. Rerun the cover letter again to see to make sure no edits are required. this is very important. Tailor the cover letter to my resume that is {resume}
     """
 
     try:
@@ -322,7 +321,7 @@ while(num_of_jobs<1):
     elif(num_of_jobs==0):
         print("Guess who is not getting employed anytime soon lmao")
     exit(-1)
-jobs = get_input_from_user(num_jobs)
+jobs = get_input_from_user(num_of_jobs)
 
 
 
@@ -367,6 +366,10 @@ print("Fully loaded")
 print(jobs)
 
 for job_link, custom_prompt in jobs:
+    # original_tab = driver.current_window_handle
+    # driver.execute_script("window.open('');")
+    # driver.switch_to.window(driver.window_handles[-1])
+    # time.sleep(2)
     print(f"Processing job link: {job_link} with custom prompt: \"{custom_prompt}\"")
     cookies = driver.get_cookies()
     selenium_cookies = {cookie['name']: cookie['value'] for cookie in cookies}
@@ -544,15 +547,15 @@ for job_link, custom_prompt in jobs:
         if(YOLO_MODE.lower() == 'yes'):
             upload_cover_letter.send_keys(cover_letter_file_path)
         elif(YOLO_MODE.lower()=='no'):
-            print(f"The file path of the cover letter you need to verify is: {cover_letter_file_path}")
-            verify_cover_letter = input("type yes only if you are done making final changes to your cover letter. Please dont make any changes to the file name")
+            print(f"The file path of the cover letter you need to verify is: {cover_letter_file_path}\n")
+            verify_cover_letter = input("type yes only if you are done making final changes to your cover letter. Please dont make any changes to the file name\n")
             while(verify_cover_letter.lower()!='yes'):
                 print("Sir/Ma'am wtf are you doing?")
                 verify_cover_letter = input("Its alright i believe in you, you know the spelling of yes for sure. or you can copy yes from this line and put it")
             upload_cover_letter.send_keys(cover_letter_file_path)
         else:
             print("Dear Human, Please read the documentation for atleast once in your lifetime. Please dont skip it like you do with terms and conditions.")
-            print("Either ")
+            print("Yolo mode error. Either type yes or no")
             exit(2)
     else:
         print("The cover letter wasn't generated successfully")
@@ -600,4 +603,6 @@ for job_link, custom_prompt in jobs:
     submit_locator = wait.until(EC.element_to_be_clickable((By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')))
     submit_btn_element = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')
 
-    # submit_btn_element.click()
+    submit_btn_element.click()
+    # driver.close()
+    # driver._switch_to.window(original_tab)
