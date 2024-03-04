@@ -12,6 +12,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 import os
 import requests
+import re
 
 import time
 from docx import Document
@@ -86,7 +87,7 @@ def extract_job_information(json_data):
             extracted_info['job_description'] = detail['AnswerValue']
         elif detail['VerityZone'] == 'formtext27':  
             extracted_info['qualifications'] = detail['AnswerValue']
-        # Add more conditions here if there are more details you'd like to extract
+
 
     return extracted_info
 
@@ -95,111 +96,32 @@ def extract_job_information(json_data):
 def get_input_from_user(num_jobs=10):
     jobs_and_prompts = []
     print(f"Please enter details for {num_jobs} jobs.")
+    
+    # Regex pattern 
+    url_pattern = r"https://sjobs\.brassring\.com/TGnewUI/Search/Home/Home\?partnerid=\d+&siteid=\d+&SID=%5E\w+#jobDetails=\d+_\d+"
+    
     for i in range(num_jobs):
-        while True:  # Keep asking for a job link until a unique one is provided
-            print(f"\nJob {i+1}:")
-            job_link = input("Enter the job link: ")
+        while True:  
+            while True:  
+                print(f"\nJob {i+1}:")
+                job_link = input("Enter the job link: ")
+                
+                
+                if not re.match(url_pattern, job_link):
+                    print("Invalid URL format. Please enter a URL that matches the required format.")
+                else:
+                    break  
             
-            # Check if the job link is already in the list of job links
             if any(job[0] == job_link for job in jobs_and_prompts):
-                print("You're trolling! This job has already been added. Please enter a different link.")
+                print("This job has already been added. Please enter a different link.")
             else:
-                break  # Exit the loop if the job link is unique
+                break  
 
         custom_prompt = input("Enter your custom prompt for this job: ")
         jobs_and_prompts.append((job_link, custom_prompt))
+        
     return jobs_and_prompts
 
-def parse_response(response):
-    # Extract the content from the response
-    content = response.choices[0].message.content
-
-    # Define the start and end markers for the main body of the cover letter
-    start_marker = "Dear Hiring Manager,"
-    end_marker = "Warm regards,"
-
-    # Find the positions of the start and end markers
-    start_pos = content.find(start_marker)
-    end_pos = content.find(end_marker)
-
-    # Extract the main body by slicing the content string from the end of the start marker to the start of the end marker
-    if start_pos != -1 and end_pos != -1:
-        main_body = content[start_pos + len(start_marker):end_pos].strip()
-    else:
-        main_body = content  # Fallback to full content if markers are not found
-
-    return main_body
-
-# def generate_cover_letter(job_title, job_description, job_id, job_designation, attempt=1):
-#     client = OpenAI(api_key=OPENAI_API_KEY)
-
-#     # Prepare the messages with job details
-#     messages = [
-#         {"role": "system", "content": "You are an assistant skilled in writing professional cover letters."},
-#         {"role": "user", "content": f"Compose a cover letter for the job title '{job_title}', job ID '{job_id}', job designation '{job_designation}', with the following job description: '{job_description}'."}
-#     ]
-
-#     try:
-#         # OpenAI API call using the Chat interface
-#         response = client.chat.completions.create(
-#             model="gpt-3.5-turbo",
-#             messages=messages,
-#             temperature=0.7,
-#             max_tokens=500,
-#             top_p=1.0,
-#             frequency_penalty=0.0,
-#             presence_penalty=0.0
-#         )
-
-#         # Extracting the generated text from the response
-        
-#         generated_cover_letter = parse_response(response)
-#         print(generate_cover_letter)
-
-#     except RateLimitError as e:
-#         if attempt <= 3:  # Set a maximum number of retries
-#             delay = 2 ** attempt  # Exponential backoff
-#             print(f"Rate limit exceeded, retrying after {delay} seconds...")
-#             time.sleep(delay)
-#             return generate_cover_letter(job_title, job_description, job_id, job_designation, attempt + 1)
-#         else:
-#             print("Max retry attempts reached. Failed to generate cover letter.")
-#             return None
-
-#     # Building the JSON structure
-#     cover_letter_data = {
-#         "job_title": job_title,
-#         "job_id": job_id,
-#         "job_designation": job_designation,
-#         "cover_letter": generated_cover_letter
-#     }
-
-#     # Convert the dictionary into a JSON string for easy parsing
-#     cover_letter_json = json.dumps(cover_letter_data, indent=4)
-
-#     # Returning the JSON string
-#     return cover_letter_json
-
-# def extract_text_from_pdf(pdf_file_path, output_file_path="parsed_resume.txt"):
-#     if(os.path.exists(output_file_path)):
-#         print(f"The parsed resume already exist at the file path {output_file_path}")
-#         return
-#     with open(pdf_file_path, 'rb') as file:
-#         pdf_reader = PyPDF2.PdfReader(file)
-#         text = ''
-
-#         for page_num in range(len(pdf_reader.pages)):
-#             page = pdf_reader.pages[page_num]
-#             text += page.extract_text() + ' '
-
-#     # Remove new lines and replace them with spaces
-#     single_line_text = text.replace('\n', ' ')
-
-#     # Write the modified text to a file
-#     with open(output_file_path, 'w') as output_file:
-#         output_file.write(single_line_text)
-
-#     print(f"Extracted text written to {output_file_path}")
 
 def read_resume_text(file_path):
     with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
@@ -253,11 +175,11 @@ def generate_cover_letter(your_name, your_address, your_city_state_zip, your_ema
     Job Designation: {job_designation}
     Job Description: {job_description}
 
-    Please make sure no edits are required like brackets shouldn't exist and no extra text other than content of the cover letter. this should be the final cover letter and try to find the department name i am applying to based on the job description and keep it arizona state university,tempe,arizona,85281. Also try to include {custom_prompt}. Rerun the cover letter again to see to make sure no edits are required. this is very important. Tailor the cover letter to my resume that is {resume}
+    Do not assume anything, stick the content matching my resume and job description.Please make sure no edits are required like brackets shouldn't exist and no extra text other than content of the cover letter. this should be the final cover letter and try to find the department name i am applying to based on the job description and keep it arizona state university,tempe,arizona,85281. Also try to include {custom_prompt}. Rerun the cover letter again to see to make sure no edits are required. this is very important. Tailor the cover letter to my resume that is {resume}
     """
 
     try:
-        # OpenAI API call using the Chat interface
+        # OpenAI API call 
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "system", "content": "You are a helpful assistant."}, 
@@ -366,10 +288,7 @@ print("Fully loaded")
 print(jobs)
 
 for job_link, custom_prompt in jobs:
-    # original_tab = driver.current_window_handle
-    # driver.execute_script("window.open('');")
-    # driver.switch_to.window(driver.window_handles[-1])
-    # time.sleep(2)
+
     print(f"Processing job link: {job_link} with custom prompt: \"{custom_prompt}\"")
     cookies = driver.get_cookies()
     selenium_cookies = {cookie['name']: cookie['value'] for cookie in cookies}
@@ -384,36 +303,8 @@ for job_link, custom_prompt in jobs:
     # Parse the JSON response
     json_response = response.json()
     extracted_json = extract_job_information(json_response)
-    print(extracted_json)
     time.sleep(2)
     driver.get(job_link)
-    job_title = (By.CSS_SELECTOR,'.jobtitleInJobDetails')
-    WebDriverWait(driver,60).until(EC.presence_of_element_located(
-        job_title
-    ))
-
-    job_title = driver.find_element(By.CSS_SELECTOR,value='.jobtitleInJobDetails')
-    
-    job_designation = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[4]/div[2]/div/div[2]/div[3]/p')
-    job_id = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[4]/div[2]/div/div[2]/div[4]/p')
-
-    wait.until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "p.jobdescriptionInJobDetails:nth-child(2) > p:nth-child(1)"))
-    )
-
-    # Locate the job description using the provided CSS selector
-    job_description_element = driver.find_element(By.CSS_SELECTOR, "p.jobdescriptionInJobDetails:nth-child(2) > p:nth-child(1)")
-    
-    # Extract and print the text content of the job description
-
-
-    WebDriverWait(driver, 60).until(EC.presence_of_element_located((By.CSS_SELECTOR, '.jobtitleInJobDetails')))
-
-    # Use the exact class names to locate the <p> element that contains the <ul> lists
-    duties_elements = wait.until(
-        EC.presence_of_all_elements_located((By.CSS_SELECTOR, "p.answer.ng-scope.section2LeftfieldsInJobDetails.jobDetailTextArea"))
-        
-    )
 
 
     resume_folder = os.path.join(os.getcwd(),"resumes")
@@ -604,5 +495,3 @@ for job_link, custom_prompt in jobs:
     submit_btn_element = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')
 
     submit_btn_element.click()
-    # driver.close()
-    # driver._switch_to.window(original_tab)
