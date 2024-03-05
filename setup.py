@@ -71,10 +71,12 @@ def main():
         move_file_to_resumes(resume_file_name)
         file.write("RESUME_FILE_NAME=" + resume_file_name + "\n")
         check_and_create_parsed_resume()
+        print("Setup complete. Resume file moved successfully.")
+
+        print("YOLO mode is basically a mode where the program will automatically send the cover letter without asking for your confirmation. If you want to confirm the cover letter before sending, type no, Otherwise yes\n")
         
         file.write('YOLO_MODE=' + get_input('Type "yes" for YOLO mode or "no" to confirm the cover letter before sending: ') + "\n")
         
-        print("Setup complete. Resume file moved successfully.")
 
 if __name__ == "__main__":
     main()
