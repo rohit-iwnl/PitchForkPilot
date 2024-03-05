@@ -95,10 +95,10 @@ def extract_job_information(json_data):
 # Take input from user
 def get_input_from_user(num_jobs=10):
     jobs_and_prompts = []
-    print(f"Please enter details for {num_jobs} jobs.")
+    print(f"Please enter details for the job.")
     
     # Regex pattern 
-    url_pattern = r"https://sjobs\.brassring\.com/TGnewUI/Search/Home/Home\?partnerid=\d+&siteid=\d+&SID=%5E\w+#jobDetails=\d+_\d+"
+    url_pattern = r"https://sjobs\.brassring\.com/TGnewUI/Search/Home/Home\?partnerid=\d+&siteid=\d+&SID=%5E[\w%\/]+#jobDetails=\d+_\d+"
     
     for i in range(num_jobs):
         while True:  
@@ -257,7 +257,7 @@ driver = webdriver.Chrome(service=svc,options=chrome_options)
 
 driver.get("https://students.asu.edu/employment/search")
 
-wait = WebDriverWait(driver,60)
+wait = WebDriverWait(driver,SIGN_IN_TIMEOUT)
 on_campus_button = driver.find_element(by=By.XPATH,value="/html/body/div/div/main/div[2]/article/div[2]/div/div/div/div/div/div[4]/div/a[1]")
 
 on_campus_button.click()
@@ -265,7 +265,7 @@ on_campus_button.click()
 username_locator = (By.XPATH,"//*[@id='username']")
 password_locator = driver.find_element(by=By.XPATH,value="//*[@id='password']")
 
-WebDriverWait(driver,10).until(
+WebDriverWait(driver,SIGN_IN_TIMEOUT).until(
     EC.presence_of_element_located(username_locator)
 )
 username_locator = driver.find_element(by=By.XPATH,value="//*[@id='username']")
@@ -280,218 +280,265 @@ submit_locator = driver.find_element(by=By.XPATH,value='/html/body/div/div/main/
 submit_locator.click()
 
 
+duo_iframe_locator = (By.XPATH,'//*[@id="duo_iframe"]')
+wait.until(EC.presence_of_element_located(duo_iframe_locator))
+driver.switch_to.frame(driver.find_element(by=By.XPATH,value='//*[@id="duo_iframe"]'))
+
+push_notification_locator = (By.XPATH,'/html/body/div/div/div[1]/div/form/div[1]/fieldset/div[1]/button')
+wait.until(EC.presence_of_element_located(push_notification_locator))
+push_notification_button = driver.find_element(by=By.XPATH,value='/html/body/div/div/div[1]/div/form/div[1]/fieldset/div[1]/button')
+push_notification_button.click()
+
+print(f"Push notification sent to your device. Please approve it to continue.")
+driver.switch_to.default_content()
+
+
 sign_out_locator = (By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[3]/div/div[2]/nav/a[7]/span')
 
-WebDriverWait(driver,40).until(EC.presence_of_element_located(sign_out_locator))
+WebDriverWait(driver,SIGN_IN_TIMEOUT).until(EC.presence_of_element_located(sign_out_locator))
+
+recent_jobs_locator = (By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/div/div[1]/div[3]/div[2]/div/div/div[1]/h2')
+wait.until(EC.presence_of_element_located(recent_jobs_locator))
 
 print("Fully loaded")
 print(jobs)
 
+
+
 for job_link, custom_prompt in jobs:
 
     print(f"Processing job link: {job_link} with custom prompt: \"{custom_prompt}\"")
-    cookies = driver.get_cookies()
-    selenium_cookies = {cookie['name']: cookie['value'] for cookie in cookies}
-    url = 'https://sjobs.brassring.com/TgNewUI/Search/Ajax/JobDetails'
+    try:
+        driver.execute_script("window.open(arguments[0], '_blank');", job_link)
+        driver.switch_to.window(driver.window_handles[1])
 
-    # Make the POST request with cookies and payload
+        driver.get(job_link)
+        time.sleep(5)
+        text_to_find = "You have already applied for this job."
+        if text_to_find in driver.page_source:
+            print("Already applied to this job, moving to the next one.")
+            # Close the current tab
+            driver.close()
+            # Switch back to the original window
+            driver.switch_to.window(driver.window_handles[0])
+            continue
+        element_present = EC.element_to_be_clickable((By.XPATH, '//*[@id="applyFromDetailBtn"]'))
+        wait.until(element_present)
+        cookies = driver.get_cookies()
+        selenium_cookies = {cookie['name']: cookie['value'] for cookie in cookies}
+        url = 'https://sjobs.brassring.com/TgNewUI/Search/Ajax/JobDetails'
 
-    # payload ={"partnerId":"25620","siteId":"5495","jobid":"4898486","configMode":"","jobSiteId":"5495","turnOffHttps":"false"}
-    payload = generate_payload(job_link)
-    response = requests.post(url, json=payload, cookies=selenium_cookies)
+        # Make the POST request with cookies and payload
 
-    # Parse the JSON response
-    json_response = response.json()
-    extracted_json = extract_job_information(json_response)
-    time.sleep(2)
-    driver.get(job_link)
+        # payload ={"partnerId":"25620","siteId":"5495","jobid":"4898486","configMode":"","jobSiteId":"5495","turnOffHttps":"false"}
+        payload = generate_payload(job_link)
+        response = requests.post(url, json=payload, cookies=selenium_cookies)
 
-
-    resume_folder = os.path.join(os.getcwd(),"resumes")
-    RESUME_FILE_NAME = os.getenv("RESUME_FILE_NAME")
-    resume_file_path = os.path.join(resume_folder,RESUME_FILE_NAME)
-    if(os.path.exists(resume_file_path)):
-        resume_text = read_resume_text(os.path.join(resume_folder,"parsed_resume.txt"))
-    else:
-        print(f"Dear Human, you had made one good decision in life by downloading this script, but you messed up in putting the resume into the right path or you messed up the env file")
-        print(f"Its alright i give you another chance to fix your mistakes. lessgoo i believe in you. You got this!!")
-        exit(5)
-    
-    generate_cover_letter(attempt=1, your_name=YOUR_NAME,your_address=YOUR_ADDRESS,your_city_state_zip=YOUR_CITY_STATE_ZIP,your_email=YOUR_EMAIL,your_phone_number=YOUR_PHONE_NUMBER,job_title=extracted_json['job_title'],job_id=extracted_json['job_id'],job_designation=extracted_json['job_designation'],job_description=extracted_json["job_description"],custom_prompt=custom_prompt,resume=resume_text)
-    time.sleep(2)
-
-
-    apply_button = (By.XPATH,'//*[@id="applyFromDetailBtn"]')
-    WebDriverWait(driver,60).until(EC.presence_of_element_located(
-        apply_button
-    ))
-    apply_button_element = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[4]/div[2]/div/div[3]/div/div/div/div/button[1]')
-
-    apply_button_element.click()
-    lets_get_started_locator = (By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')
-
-    WebDriverWait(driver,60).until(EC.presence_of_element_located(
-        lets_get_started_locator
-    ))
-
-    lets_get_started_button = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')
-    lets_get_started_button.click()
-
-    save_and_continue_locator = (By.CSS_SELECTOR,'#shownext')
-
-    WebDriverWait(driver,60).until(EC.presence_of_element_located(
-        save_and_continue_locator
-    ))
-    save_and_continue_button = driver.find_element(by=By.CSS_SELECTOR,value='#shownext')
-    save_and_continue_button.click()
-
-    wait.until(EC.presence_of_element_located((By.CSS_SELECTOR,'#radio-61829-Yes')))
-    
-
-    federal_yes = driver.find_element(by=By.CSS_SELECTOR,value='#radio-61829-Yes')
-    federal_no = driver.find_element(by=By.CSS_SELECTOR,value='#radio-61829-No')
+        # Parse the JSON response
+        json_response = response.json()
+        extracted_json = extract_job_information(json_response)
+        time.sleep(5)
 
 
-    if FEDERAL_WORK_STUDY.lower() == 'yes':
-        federal_yes.click()
-    else:
-        federal_no.click()
 
-    authorized = driver.find_element(By.CSS_SELECTOR,'#radio-44674-Yes')
-    authorized.click()
-
-    dropdown_menu_locator = wait.until(EC.visibility_of_element_located((By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[2]/div/div/div/div/div/div[7]/span[2]/span[2]')))
-    dropdown_menu = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[2]/div/div/div/div/div/div[7]/span[2]/span[2]')
-    dropdown_menu.click()
-
-    # How did you find out about this job?
-
-    if ARE_YOU_BEING_REFERRED.lower() == 'yes':
-        referral_option = wait.until(EC.visibility_of_element_located((By.XPATH, '/html/body/div[2]/div[2]/div[1]/div[7]/div[5]/div[1]/ul/li[6]/div')))
-        referral_option.click()
-
-        referrer_name = wait.until(EC.visibility_of_element_located((By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[2]/div/div/div/div/div/div[10]/div/input')))
-        referrer_name.clear()
-        referrer_name.send_keys(REFERRED_BY)
-    else:
-        website_option = wait.until(EC.visibility_of_element_located((By.XPATH, '/html/body/div[2]/div[2]/div[1]/div[7]/div[5]/div[1]/ul/li[4]/div')))
-        website_option.click()
-
-
-    save_and_continue_button = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')
-    save_and_continue_button.click()
-
-    time.sleep(2)
-
-    add_resume_locator = (By.ID,'AddResumeLink')
-    wait.until(EC.element_to_be_clickable(
-        add_resume_locator
-    ))
-
-    add_resume_element = driver.find_element(by=By.ID,value='AddResumeLink')
-    add_resume_element.click()
-
-    resume_iframe = wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[3]/div[2]")))
-
-    resume_iframe = driver.find_element(By.XPATH, "/html/body/div[3]/div[2]/iframe")
-    driver.switch_to.frame(resume_iframe)
-
-    upload_resume_button = driver.find_element(By.XPATH, "/html/body/div[2]/div/div[1]/div/div/div[3]/label/input")
-    
-
-    # ADD RESUME HERE
-
-    if os.path.exists(resume_file_path):
-        upload_resume_button.send_keys(resume_file_path)
-        driver.switch_to.default_content()
-    else:
-        print(f"You are actually fricking trolling bro!. Put the resume into {resume_folder} path and set the env variable properly")
-        exit(1)
-    
-
-    add_cover_letter = (By.ID,'AddCLLink')
-    wait.until(EC.element_to_be_clickable(
-        add_cover_letter
-    ))
-
-    add_cover_letter_element = driver.find_element(by=By.ID,value='AddCLLink')
-    add_cover_letter_element.click()
-
-    cl_iframe = wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[3]/div[2]")))
-
-    cl_iframe = driver.find_element(By.XPATH, "/html/body/div[3]/div[2]/iframe")
-    driver.switch_to.frame(cl_iframe)
-
-    upload_cover_letter = driver.find_element(By.XPATH, "/html/body/div[2]/div/div[1]/div/div/div[3]/label/input")
-
-    cover_letter_folder = os.path.join(os.getcwd(), "cover_letters")  # 'cover letters' is the folder name in your working directory
-    job_id_text = extracted_json['job_id']
-    print(job_id_text)
-    print()
-    cover_letter_file_name = f"{job_id_text}.docx"
-    cover_letter_file_path = os.path.join(cover_letter_folder, cover_letter_file_name)
-
-    print(cover_letter_file_name)
-    print(cover_letter_file_path)
-
-    if os.path.exists(cover_letter_file_path):
-        if(YOLO_MODE.lower() == 'yes'):
-            upload_cover_letter.send_keys(cover_letter_file_path)
-        elif(YOLO_MODE.lower()=='no'):
-            print(f"The file path of the cover letter you need to verify is: {cover_letter_file_path}\n")
-            verify_cover_letter = input("type yes only if you are done making final changes to your cover letter. Please dont make any changes to the file name\n")
-            while(verify_cover_letter.lower()!='yes'):
-                print("Sir/Ma'am wtf are you doing?")
-                verify_cover_letter = input("Its alright i believe in you, you know the spelling of yes for sure. or you can copy yes from this line and put it")
-            upload_cover_letter.send_keys(cover_letter_file_path)
+        resume_folder = os.path.join(os.getcwd(),"resumes")
+        RESUME_FILE_NAME = os.getenv("RESUME_FILE_NAME")
+        resume_file_path = os.path.join(resume_folder,RESUME_FILE_NAME)
+        if(os.path.exists(resume_file_path)):
+            resume_text = read_resume_text(os.path.join(resume_folder,"parsed_resume.txt"))
         else:
-            print("Dear Human, Please read the documentation for atleast once in your lifetime. Please dont skip it like you do with terms and conditions.")
-            print("Yolo mode error. Either type yes or no")
-            exit(2)
-    else:
-        print("The cover letter wasn't generated successfully")
-        print("Cover letter file does not exist:", cover_letter_file_path)
-        exit(3)
+            print(f"Dear Human, you had made one good decision in life by downloading this script, but you messed up in putting the resume into the right path or you messed up the env file")
+            print(f"Its alright i give you another chance to fix your mistakes. lessgoo i believe in you. You got this!!")
+            exit(5)
+        
+        generate_cover_letter(attempt=1, your_name=YOUR_NAME,your_address=YOUR_ADDRESS,your_city_state_zip=YOUR_CITY_STATE_ZIP,your_email=YOUR_EMAIL,your_phone_number=YOUR_PHONE_NUMBER,job_title=extracted_json['job_title'],job_id=extracted_json['job_id'],job_designation=extracted_json['job_designation'],job_description=extracted_json["job_description"],custom_prompt=custom_prompt,resume=resume_text)
+        time.sleep(2)
 
 
-    driver.switch_to.default_content()
+        apply_button = (By.XPATH,'//*[@id="applyFromDetailBtn"]')
+        WebDriverWait(driver,SIGN_IN_TIMEOUT).until(EC.presence_of_element_located(
+            apply_button
+        ))
+        apply_button_element = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[4]/div[2]/div/div[3]/div/div/div/div/button[1]')
 
-    save_and_continue_resume_locator = wait.until(EC.element_to_be_clickable((By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')))
-    
+        apply_button_element.click()
+        lets_get_started_locator = (By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')
 
-    save_and_continue_button = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')
-    save_and_continue_button.click()
+        WebDriverWait(driver,SIGN_IN_TIMEOUT).until(EC.presence_of_element_located(
+            lets_get_started_locator
+        ))
 
-    time.sleep(5)
-    save_and_continue_after_resume = wait.until(EC.element_to_be_clickable((By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')))
-    save_and_continue_after_resume_element = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button') 
+        lets_get_started_button = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')
+        lets_get_started_button.click()
 
-    save_and_continue_after_resume_element.click()
+        save_and_continue_locator = (By.CSS_SELECTOR,'#shownext')
 
-    time.sleep(5)
+        WebDriverWait(driver,SIGN_IN_TIMEOUT).until(EC.presence_of_element_located(
+            save_and_continue_locator
+        ))
+        save_and_continue_button = driver.find_element(by=By.CSS_SELECTOR,value='#shownext')
+        save_and_continue_button.click()
 
-    references_save_locator = wait.until(EC.element_to_be_clickable((By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')))
+        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR,'#radio-61829-Yes')))
+        
 
-    references_save_element = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')
-    references_save_element.click()   
-
-    time.sleep(5)
-
-    gender_save_locator = wait.until(EC.element_to_be_clickable((By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')))
-    gender_save_element = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')
-    gender_save_element.click()
-
-    time.sleep(5)
-
-    ethnicity_save_locator = wait.until(EC.element_to_be_clickable((By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')))
-
-    ethnicity_save_element = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')
-    ethnicity_save_element.click()
-
-    time.sleep(5)
+        federal_yes = driver.find_element(by=By.CSS_SELECTOR,value='#radio-61829-Yes')
+        federal_no = driver.find_element(by=By.CSS_SELECTOR,value='#radio-61829-No')
 
 
-    submit_locator = wait.until(EC.element_to_be_clickable((By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')))
-    submit_btn_element = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')
+        if FEDERAL_WORK_STUDY.lower() == 'yes':
+            federal_yes.click()
+        else:
+            federal_no.click()
 
-    submit_btn_element.click()
+        authorized = driver.find_element(By.CSS_SELECTOR,'#radio-44674-Yes')
+        authorized.click()
+
+        dropdown_menu_locator = wait.until(EC.visibility_of_element_located((By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[2]/div/div/div/div/div/div[7]/span[2]/span[2]')))
+        dropdown_menu = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[2]/div/div/div/div/div/div[7]/span[2]/span[2]')
+        dropdown_menu.click()
+
+        # How did you find out about this job?
+
+        if ARE_YOU_BEING_REFERRED.lower() == 'yes':
+            referral_option = wait.until(EC.visibility_of_element_located((By.XPATH, '/html/body/div[2]/div[2]/div[1]/div[7]/div[5]/div[1]/ul/li[6]/div')))
+            referral_option.click()
+
+            referrer_name = wait.until(EC.visibility_of_element_located((By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[2]/div/div/div/div/div/div[10]/div/input')))
+            referrer_name.clear()
+            referrer_name.send_keys(REFERRED_BY)
+        else:
+            website_option = wait.until(EC.visibility_of_element_located((By.XPATH, '/html/body/div[2]/div[2]/div[1]/div[7]/div[5]/div[1]/ul/li[4]/div')))
+            website_option.click()
+
+
+        save_and_continue_button = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')
+        save_and_continue_button.click()
+
+        time.sleep(2)
+
+        add_resume_locator = (By.ID,'AddResumeLink')
+        wait.until(EC.element_to_be_clickable(
+            add_resume_locator
+        ))
+
+        add_resume_element = driver.find_element(by=By.ID,value='AddResumeLink')
+        add_resume_element.click()
+
+        resume_iframe = wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[3]/div[2]")))
+
+        resume_iframe = driver.find_element(By.XPATH, "/html/body/div[3]/div[2]/iframe")
+        driver.switch_to.frame(resume_iframe)
+
+        upload_resume_button = driver.find_element(By.XPATH, "/html/body/div[2]/div/div[1]/div/div/div[3]/label/input")
+        
+
+        # ADD RESUME HERE
+
+        if os.path.exists(resume_file_path):
+            upload_resume_button.send_keys(resume_file_path)
+            driver.switch_to.default_content()
+        else:
+            print(f"You are actually fricking trolling bro!. Put the resume into {resume_folder} path and set the env variable properly")
+            exit(1)
+        
+
+        add_cover_letter = (By.ID,'AddCLLink')
+        wait.until(EC.element_to_be_clickable(
+            add_cover_letter
+        ))
+
+        add_cover_letter_element = driver.find_element(by=By.ID,value='AddCLLink')
+        add_cover_letter_element.click()
+
+        cl_iframe = wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[3]/div[2]")))
+
+        cl_iframe = driver.find_element(By.XPATH, "/html/body/div[3]/div[2]/iframe")
+        driver.switch_to.frame(cl_iframe)
+
+        upload_cover_letter = driver.find_element(By.XPATH, "/html/body/div[2]/div/div[1]/div/div/div[3]/label/input")
+
+        cover_letter_folder = os.path.join(os.getcwd(), "cover_letters")  # 'cover letters' is the folder name in your working directory
+        job_id_text = extracted_json['job_id']
+        print(job_id_text)
+        print()
+        cover_letter_file_name = f"{job_id_text}.docx"
+        cover_letter_file_path = os.path.join(cover_letter_folder, cover_letter_file_name)
+
+        print(cover_letter_file_name)
+        print(cover_letter_file_path)
+
+        if os.path.exists(cover_letter_file_path):
+            if(YOLO_MODE.lower() == 'yes'):
+                upload_cover_letter.send_keys(cover_letter_file_path)
+            elif(YOLO_MODE.lower()=='no'):
+                print(f"The file path of the cover letter you need to verify is: {cover_letter_file_path}\n")
+                verify_cover_letter = input("type yes only if you are done making final changes to your cover letter. Please dont make any changes to the file name\n")
+                while(verify_cover_letter.lower()!='yes'):
+                    print("Sir/Ma'am wtf are you doing?")
+                    verify_cover_letter = input("Its alright i believe in you, you know the spelling of yes for sure. or you can copy yes from this line and put it")
+                upload_cover_letter.send_keys(cover_letter_file_path)
+            else:
+                print("Dear Human, Please read the documentation for atleast once in your lifetime. Please dont skip it like you do with terms and conditions.")
+                print("Yolo mode error. Either type yes or no")
+                exit(2)
+        else:
+            print("The cover letter wasn't generated successfully")
+            print("Cover letter file does not exist:", cover_letter_file_path)
+            exit(3)
+
+
+        driver.switch_to.default_content()
+        time.sleep(3)
+
+        save_and_continue_resume_locator = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,'#shownext')))
+        
+
+        save_and_continue_button = driver.find_element(by=By.CSS_SELECTOR,value='#shownext')
+        save_and_continue_button.click()
+
+        time.sleep(5)
+        save_and_continue_after_resume = wait.until(EC.element_to_be_clickable((By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')))
+        save_and_continue_after_resume_element = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button') 
+
+        save_and_continue_after_resume_element.click()
+
+        time.sleep(5)
+
+        references_save_locator = wait.until(EC.element_to_be_clickable((By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')))
+
+        references_save_element = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')
+        references_save_element.click()   
+
+        time.sleep(5)
+
+        gender_save_locator = wait.until(EC.element_to_be_clickable((By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')))
+        gender_save_element = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')
+        gender_save_element.click()
+
+        time.sleep(5)
+
+        ethnicity_save_locator = wait.until(EC.element_to_be_clickable((By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')))
+
+        ethnicity_save_element = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/button')
+        ethnicity_save_element.click()
+
+        time.sleep(5)
+
+        save_and_finish_locator = wait.until(EC.element_to_be_clickable((By.XPATH,'/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/a')))
+        save_and_finish_later_button = driver.find_element(by=By.XPATH,value='/html/body/div[2]/div[2]/div[1]/div[7]/div[3]/form/div/div[1]/div[4]/a')
+        save_and_finish_later_button.click()
+
+        time.sleep(5)
+        driver.close()
+        driver.switch_to.window(driver.window_handles[0])
+    except Exception as e:
+        print(f"An error occurred while processing {job_link}: {e}")
+        print("Report it on the github : https://github.com/rohit-iwnl/PitchForkPilot/issues\n")
+        print("Please make sure to include the error message\n")
+        continue  # Continue with the next job link
+
+print(f"All {len(num_of_jobs)} jobs have been processed successfully. Submit them from saved applications in the job portal\n")
+print(f"Thank you human for using this script. I hope you get the job you are looking for. If you have any issues or suggestions please report it on the github\nhttps://github.com/rohit-iwnl/PitchForkPilot")
+time.sleep(5)
+driver.close()
