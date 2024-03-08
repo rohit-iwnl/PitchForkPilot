@@ -286,6 +286,7 @@ driver.switch_to.frame(driver.find_element(by=By.XPATH,value='//*[@id="duo_ifram
 
 push_notification_locator = (By.XPATH,'/html/body/div/div/div[1]/div/form/div[1]/fieldset/div[1]/button')
 wait.until(EC.presence_of_element_located(push_notification_locator))
+wait.until(EC.element_to_be_clickable(push_notification_locator))
 push_notification_button = driver.find_element(by=By.XPATH,value='/html/body/div/div/div[1]/div/form/div[1]/fieldset/div[1]/button')
 push_notification_button.click()
 
@@ -538,7 +539,7 @@ for job_link, custom_prompt in jobs:
         print("Please make sure to include the error message\n")
         continue  # Continue with the next job link
 
-print(f"All {len(num_of_jobs)} jobs have been processed successfully. Submit them from saved applications in the job portal\n")
+print(f"All {num_of_jobs} jobs have been processed successfully. Submit them from saved applications in the job portal\n")
 print(f"Thank you human for using this script. I hope you get the job you are looking for. If you have any issues or suggestions please report it on the github\nhttps://github.com/rohit-iwnl/PitchForkPilot")
 time.sleep(5)
 driver.close()
