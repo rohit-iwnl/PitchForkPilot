@@ -6,6 +6,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import WebDriverException, ElementClickInterceptedException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.chrome.options import Options
 from datetime import datetime
@@ -13,6 +14,7 @@ from dotenv import load_dotenv
 import os
 import requests
 import re
+import google.generativeai as genai
 
 import time
 from docx import Document
@@ -26,6 +28,7 @@ ASU_PASSWORD = os.getenv("ASU_PASSWORD")
 SIGN_IN_TIMEOUT = os.getenv("SIGN_IN_TIMEOUT")
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 # dont worry i wont steal your data
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
 YOLO_MODE = os.getenv("YOLO_MODE")
 
@@ -139,6 +142,98 @@ def read_resume_text(file_path):
         print(f"Resume text file not found at {parsed_resume_path}. Please make sure the file exists.")
         exit(1)
 
+#Retry mechanism for uploading cover letter
+def click_with_retry(driver, element_id, max_attempts=3, wait_time=2):
+    attempts = 0
+    while attempts < max_attempts:
+        try:
+            # Find the element by its ID and click it
+            element = driver.find_element(by=By.ID, value=element_id)
+            element.click()
+            print(f"Click successful on attempt {attempts+1}")
+            return True
+        except (ElementClickInterceptedException, WebDriverException) as e:
+            print(f"Click failed on attempt {attempts+1}: {e}")
+            time.sleep(wait_time)
+            attempts += 1
+
+    print("All click attempts failed.")
+    return False
+
+def generate_cover_letter_gemini(your_name, your_address, your_city_state_zip, your_email, your_phone_number, job_title, job_description, job_id, job_designation, attempt=1,custom_prompt="",resume=""):
+    cover_letter_folder = os.path.join(os.getcwd(), "cover_letters")  # 'cover letters' is the folder name in your working directory
+
+    print(job_id)
+    cover_letter_file_name = f"{job_id}.docx"
+    cover_letter_file_path = os.path.join(cover_letter_folder, cover_letter_file_name)
+
+    if os.path.exists(cover_letter_file_path):
+        print(f"Cover letter for job exists already {cover_letter_file_path}")
+        return
+    
+    genai.configure(api_key=GEMINI_API_KEY)
+    
+    generation_config = {
+    "temperature": 0.9,
+    "top_p": 1,
+    "top_k": 1,
+    "max_output_tokens": 2048,
+    }
+
+    safety_settings = [
+    {
+        "category": "HARM_CATEGORY_HARASSMENT",
+        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+    },
+    {
+        "category": "HARM_CATEGORY_HATE_SPEECH",
+        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+    },
+    {
+        "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+    },
+    {
+        "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+    },
+    ]
+
+    model = genai.GenerativeModel(model_name="gemini-1.0-pro",
+                                generation_config=generation_config,
+                                safety_settings=safety_settings)
+
+    convo = model.start_chat(history=[
+    ])
+
+    current_date = datetime.today().strftime('%B %d, %Y')
+
+    user_input = f"""
+    You are an assistant skilled in writing professional cover letters. Please write a cover letter for the following job using the provided personal and job details:
+
+    Personal Details:
+    Name: {your_name}
+    Address: {your_address}
+    City/State/Zip: {your_city_state_zip}
+    Email: {your_email}
+    Phone Number: {your_phone_number}
+
+    Date: {current_date}
+
+    Job Details:
+    Job Title: {job_title}
+    Job ID: {job_id}
+    Job Designation: {job_designation}
+    Job Description: {job_description}
+
+    Include my personal details like name ,address, phone number in the start and do not assume anything, stick the content matching my resume and job description.Please make sure no edits are required like brackets shouldn't exist and no extra text other than content of the cover letter. this should be the final cover letter and try to find the department name i am applying to based on the job description and keep it arizona state university,tempe,arizona,85281. Also try to include {custom_prompt}. Rerun the cover letter again to see to make sure no edits are required. this is very important. Tailor the cover letter to my resume that is {resume}
+    """
+
+    convo.send_message(user_input)
+    generated_content_from_gemini = convo.last.text
+    return generate_document_from_prompt(generated_content_from_gemini,job_id)
+
+
 
 def generate_cover_letter(your_name, your_address, your_city_state_zip, your_email, your_phone_number, job_title, job_description, job_id, job_designation, attempt=1,custom_prompt="",resume=""):
 
@@ -244,6 +339,23 @@ while(num_of_jobs<1):
         print("Guess who is not getting employed anytime soon lmao")
     exit(-1)
 jobs = get_input_from_user(num_of_jobs)
+print("\n")
+print("Which model do you want to use for cover letter generation? OpenAI or Gemini\n")
+print("1. OpenAI\n2. Gemini")
+ai_model = int(input("Enter the number of the model you want to use: "))
+if ai_model <1 or ai_model>2:
+    print("Invalid model number. Please enter a valid number.")
+    exit(1)
+if ai_model == 1:
+    print("You have selected OpenAI for cover letter generation.\n")
+    if(OPENAI_API_KEY == None):
+        print("Please set the OPENAI_API_KEY in the .env file to use the OpenAI model")
+        exit(1)
+elif ai_model == 2:
+    print("You have selected Gemini for cover letter generation.\n")
+    if(GEMINI_API_KEY == None):
+        print("Please set the GEMINI_API_KEY in the .env file to use the Gemini model")
+        exit(1)
 
 
 
@@ -351,8 +463,10 @@ for job_link, custom_prompt in jobs:
             print(f"Dear Human, you had made one good decision in life by downloading this script, but you messed up in putting the resume into the right path or you messed up the env file")
             print(f"Its alright i give you another chance to fix your mistakes. lessgoo i believe in you. You got this!!")
             exit(5)
-        
-        generate_cover_letter(attempt=1, your_name=YOUR_NAME,your_address=YOUR_ADDRESS,your_city_state_zip=YOUR_CITY_STATE_ZIP,your_email=YOUR_EMAIL,your_phone_number=YOUR_PHONE_NUMBER,job_title=extracted_json['job_title'],job_id=extracted_json['job_id'],job_designation=extracted_json['job_designation'],job_description=extracted_json["job_description"],custom_prompt=custom_prompt,resume=resume_text)
+        if(ai_model==1):
+            generate_cover_letter(your_name=YOUR_NAME,your_address=YOUR_ADDRESS,your_city_state_zip=YOUR_CITY_STATE_ZIP,your_email=YOUR_EMAIL,your_phone_number=YOUR_PHONE_NUMBER,job_title=extracted_json['job_title'],job_id=extracted_json['job_id'],job_designation=extracted_json['job_designation'],job_description=extracted_json["job_description"],custom_prompt=custom_prompt,resume=resume_text)
+        elif(ai_model==2):
+            generate_cover_letter_gemini(your_name=YOUR_NAME,your_address=YOUR_ADDRESS,your_city_state_zip=YOUR_CITY_STATE_ZIP,your_email=YOUR_EMAIL,your_phone_number=YOUR_PHONE_NUMBER,job_title=extracted_json['job_title'],job_id=extracted_json['job_id'],job_designation=extracted_json['job_designation'],job_description=extracted_json["job_description"],custom_prompt=custom_prompt,resume=resume_text)
         time.sleep(2)
 
 
@@ -442,15 +556,17 @@ for job_link, custom_prompt in jobs:
         else:
             print(f"You are actually fricking trolling bro!. Put the resume into {resume_folder} path and set the env variable properly")
             exit(1)
+
         
+        wait.until(EC.invisibility_of_element_located((By.CSS_SELECTOR, ".ngdialog-overlay")))
+        time.sleep(5)        
 
         add_cover_letter = (By.ID,'AddCLLink')
         wait.until(EC.element_to_be_clickable(
             add_cover_letter
         ))
 
-        add_cover_letter_element = driver.find_element(by=By.ID,value='AddCLLink')
-        add_cover_letter_element.click()
+        click_with_retry(driver, "AddCLLink")
 
         cl_iframe = wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[3]/div[2]")))
 
