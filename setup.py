@@ -51,7 +51,17 @@ def get_input(prompt, validation_function=None):
 
 def main():
     with open(".env", "w") as file:
-        file.write("OPENAI_API_KEY=" + get_input("Enter your OpenAI API key: ") + "\n")
+        print("Which AI model would you like to use for generating the cover letter?")
+        print("1. OpenAI's ChatGPT")
+        print("2. Google's Gemini")
+        model_choice = int(input("Enter 1 for OpenAI's ChatGPT or 2 for Google's Gemini: "))
+        if model_choice < 1 or model_choice > 2:
+            print("Invalid choice. Please enter 1 or 2.")
+            return
+        elif model_choice == 1:
+            file.write("OPENAI_API_KEY=" + get_input("Enter your OpenAI API key: ") + "\n") 
+        elif model_choice == 2:
+            file.write("GEMINI_API_KEY=" + get_input("Enter your Gemini Model API Key: ") + "\n")
         file.write("ASU_USERNAME=" + get_input("Enter your ASU username: ") + "\n")
         file.write("ASU_PASSWORD=" + get_input("Enter your ASU password (case sensitive): ") + "\n")
         file.write("SIGN_IN_TIMEOUT=60" + "\n")
