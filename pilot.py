@@ -465,7 +465,7 @@ for job_link, custom_prompt in jobs:
             print(f"Its alright i give you another chance to fix your mistakes. lessgoo i believe in you. You got this!!")
             exit(5)
         if(ai_model==1):
-            generate_cover_letter(your_name=YOUR_NAME,your_address=YOUR_ADDRESS,your_city_state_zip=YOUR_CITY_STATE_ZIP,your_email=YOUR_EMAIL,your_phone_number=YOUR_PHONE_NUMBER,job_title=extracted_json['job_title'],job_id=extracted_json['job_id'],job_designation=extracted_json['job_designation'],job_description=extracted_json["job_description"],custom_prompt=custom_prompt,resume=resume_text)
+            generate_cover_letter(attempt=1,your_name=YOUR_NAME,your_address=YOUR_ADDRESS,your_city_state_zip=YOUR_CITY_STATE_ZIP,your_email=YOUR_EMAIL,your_phone_number=YOUR_PHONE_NUMBER,job_title=extracted_json['job_title'],job_id=extracted_json['job_id'],job_designation=extracted_json['job_designation'],job_description=extracted_json["job_description"],custom_prompt=custom_prompt,resume=resume_text)
         elif(ai_model==2):
             generate_cover_letter_gemini(your_name=YOUR_NAME,your_address=YOUR_ADDRESS,your_city_state_zip=YOUR_CITY_STATE_ZIP,your_email=YOUR_EMAIL,your_phone_number=YOUR_PHONE_NUMBER,job_title=extracted_json['job_title'],job_id=extracted_json['job_id'],job_designation=extracted_json['job_designation'],job_description=extracted_json["job_description"],custom_prompt=custom_prompt,resume=resume_text)
         time.sleep(2)
