@@ -54,6 +54,7 @@ python3 setup.py
 After running the `setup.py` script to initialize your project setup, it's crucial to verify the `.env` file created in your project's root directory. The `.env` file contains essential configurations necessary for the application to run correctly. Here's what each variable in the `.env` file represents:
 
 - `OPENAI_API_KEY`: Your OpenAI API key for accessing OpenAI services.
+- `GEMINI_API_KEY`: Your Gemini Model API key for accessing Google's services.
 - `ASU_USERNAME`: Your ASU username, required for specific operations within the application.
 - `ASU_PASSWORD`: Your ASU password, which is case sensitive.
 - `SIGN_IN_TIMEOUT`: The timeout for sign-in operations, set to 60 seconds by default.
