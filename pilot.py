@@ -331,18 +331,10 @@ def generate_document_from_prompt(prompt, document_id, folder_name='cover_letter
 
 
 
-num_of_jobs = int(input("How many jobs do you want to apply today: Max is 10 now :(\n"))
-while(num_of_jobs<1):
-    if(num_of_jobs<0):
-        print("BRUH FR?!!!. No way you entered a negative number :insert skull emoji:")
-    elif(num_of_jobs==0):
-        print("Guess who is not getting employed anytime soon lmao")
-    exit(-1)
-jobs = get_input_from_user(num_of_jobs)
-print("\n")
+
 print("Which model do you want to use for cover letter generation? OpenAI or Gemini\n")
-print("1. OpenAI\n2. Gemini")
-ai_model = int(input("Enter the number of the model you want to use: "))
+print("1. OpenAI's ChatGPT\n2. Google's Gemini")
+ai_model = int(input("Which model do you want to use? (Enter 1 or 2):"))
 if ai_model <1 or ai_model>2:
     print("Invalid model number. Please enter a valid number.")
     exit(1)
@@ -356,6 +348,15 @@ elif ai_model == 2:
     if(GEMINI_API_KEY == None):
         print("Please set the GEMINI_API_KEY in the .env file to use the Gemini model")
         exit(1)
+
+num_of_jobs = int(input("How many jobs do you want to apply today: Max is 10 now :(\nEnter your input:"))
+while(num_of_jobs<1):
+    if(num_of_jobs<0):
+        print("BRUH FR?!!!. No way you entered a negative number :insert skull emoji:")
+    elif(num_of_jobs==0):
+        print("Guess who is not getting employed anytime soon lmao")
+    exit(-1)
+jobs = get_input_from_user(num_of_jobs)
 
 
 
