@@ -1,6 +1,7 @@
 import json
 from selenium import webdriver
-from chromedriver_py import binary_path
+# from chromedriver_py import binary_path
+import chromedriver_autoinstaller
 from urllib.parse import urlparse, parse_qs
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -365,8 +366,9 @@ chrome_options = Options()
 chrome_options.add_experimental_option("detach", True)
 
 
-svc = webdriver.ChromeService(executable_path=binary_path)
-driver = webdriver.Chrome(service=svc,options=chrome_options)
+# svc = webdriver.ChromeService(executable_path=binary_path)
+chromedriver_autoinstaller.install()
+driver = webdriver.Chrome(options=chrome_options)
 
 driver.get("https://students.asu.edu/employment/search")
 
