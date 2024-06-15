@@ -10,23 +10,21 @@ def validate_phone_number(phone_number):
     pattern = r"^\d{3}-\d{3}-\d{4}$"
     return re.match(pattern, phone_number)
 
-def check_and_create_parsed_resume():
-    destination_folder = os.path.join(os.getcwd(), "resumes")
-    parsed_resume_path = os.path.join(destination_folder, "parsed_resume.txt")
-    
-    print("\nPlease create a file named 'parsed_resume.txt' in the resumes folder and paste your resume in plain text into this file.")
-    while True:
-        check = input("\nAfter pasting your plain text resume into 'parsed_resume.txt', type 'yes' and press Enter to continue: ")
-        if check.lower() == "yes":
-            if os.path.isfile(parsed_resume_path):  
-                print("Parsed resume file detected. Continuing with setup...")
-                break  
-            else:
-                print("Parsed resume file not detected. Please make sure the file is created in the 'resumes' folder and contains your resume.")
-        else:
-            print("Please type 'yes' and press Enter after you have pasted your resume in plain text into 'parsed_resume.txt'.")
-            print("This is to ensure no formatting or encoding errors occur when the program reads your resume for tailoring the cover letter.")
+def check_and_create_parsed_resume(filename):
+    f = open(os.getcwd() + "/resumes/parsed_resume.txt", "w")
 
+    from pypdf import PdfReader 
+
+    # creating a pdf reader object 
+    reader = PdfReader(os.getcwd()+ '/resumes/'+filename)
+
+    # getting a specific page from the pdf file 
+    page = reader.pages[0] 
+
+    # extracting text from page 
+    text = page.extract_text()
+    f.write(text)
+    
 def file_exists(filename):
     return os.path.isfile(filename)
 
@@ -80,7 +78,7 @@ def main():
         resume_file_name = get_input("Enter the name of your resume file (make sure it's in the current directory): ", file_exists)
         move_file_to_resumes(resume_file_name)
         file.write("RESUME_FILE_NAME=" + resume_file_name + "\n")
-        check_and_create_parsed_resume()
+        check_and_create_parsed_resume(resume_file_name)
         print("Setup complete. Resume file moved successfully.")
 
         print("YOLO mode is basically a mode where the program will automatically send the cover letter without asking for your confirmation. If you want to confirm the cover letter before sending, type no, Otherwise yes\n")

@@ -6,3 +6,4 @@ requests==2.31.0
 selenium==4.18.1
 google-generativeai==0.4.0
 chromedriver-autoinstaller
+pypdf
