@@ -1,6 +1,6 @@
 # PitchForksPilot
 
-This project automates the application process, enabling you to fill out applications in under a minute with the help of AI that generates cover letters for you tailored to your resume and job description.
+This project automates the application process, enabling you to fill out ASU on-campus job applications in under a minute with the help of AI that generates cover letters for you tailored to your resume and job description.
 
 
 ## Table of Contents
